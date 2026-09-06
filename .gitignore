@@ -1,0 +1,21 @@
+# Build-Artefakte (SwiftPM)
+/.build/
+*.dSYM/
+
+# Gebündelte App (Ausgabe von build_app.sh)
+/dist/
+
+# Upstream-Quellen von rustdesk-server (Klon durch Scripts/build-server-binaries.sh)
+/vendor/
+
+# Fertig gebaute hbbs/hbbr (Ausgabe von Scripts/build-server-binaries.sh).
+# Bewusst nicht im Repo: Fremd-Binaries gehören nicht in die Versionierung,
+# das Bauskript ist die reproduzierbare Anleitung.
+/Vendored/hbbs
+/Vendored/hbbr
+
+# SwiftPM lokale Konfiguration
+/.swiftpm/
+
+# macOS
+.DS_Store
