@@ -44,11 +44,23 @@ for bin in hbbs hbbr; do
   fi
 done
 
-# Universal bauen, damit die App auch auf Intel-Macs läuft. Bei --arch legt
-# SwiftPM das Ergebnis unter .build/apple/Products/Release ab.
-echo "==> Baue Release-Binary (arm64 + x86_64)…"
-swift build -c release --arch arm64 --arch x86_64
-BUILT="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/${APP_NAME}"
+# Universal bauen, damit die App auch auf Intel-Macs läuft.
+#
+# Nicht über "swift build --arch arm64 --arch x86_64": das verlangt xcbuild aus
+# dem vollen Xcode und scheitert mit den blossen Command Line Tools. Stattdessen
+# jede Architektur einzeln über -target bauen und danach mit lipo zusammenlegen —
+# das kommt mit den CLT aus.
+ARCHS=(arm64 x86_64)
+BUILT_SLICES=()
+for arch in "${ARCHS[@]}"; do
+  echo "==> Baue Release-Binary für ${arch}…"
+  swift build -c release --scratch-path ".build/${arch}" \
+    -Xswiftc -target -Xswiftc "${arch}-apple-macos13.0"
+  BUILT_SLICES+=(".build/${arch}/release/${APP_NAME}")
+done
+
+BUILT=".build/${APP_NAME}-universal"
+lipo -create -output "${BUILT}" "${BUILT_SLICES[@]}"
 
 echo "==> Erzeuge ${APP_BUNDLE}…"
 rm -rf "${APP_BUNDLE}"
@@ -106,9 +118,13 @@ echo ""
 echo "==> Portabilitätsprüfung"
 for f in "${APP_BUNDLE}/Contents/MacOS/"*; do
   printf '    %-16s %s\n' "$(basename "$f")" "$(lipo -info "$f" | sed 's/.*: //')"
-  if otool -L "$f" | tail -n +2 | grep -qvE '^\s+(/usr/lib/|/System/Library/)'; then
+  # Bei Fat-Binaries schreibt otool je Architektur eine Kopfzeile — nur die
+  # eingerückten Bibliothekszeilen zählen, sonst schlägt die Prüfung immer an.
+  foreign="$(otool -L "$f" | grep -E '^[[:space:]]+/' \
+             | grep -vE '^[[:space:]]+(/usr/lib/|/System/Library/)' || true)"
+  if [[ -n "${foreign}" ]]; then
     echo "    WARNUNG: $(basename "$f") hat Laufzeitabhängigkeiten außerhalb des Systems:" >&2
-    otool -L "$f" | tail -n +2 | grep -vE '^\s+(/usr/lib/|/System/Library/)' >&2
+    printf '%s\n' "${foreign}" >&2
   fi
 done
 LEAKED="$(strings "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}" 2>/dev/null | grep -c '/Users/' || true)"

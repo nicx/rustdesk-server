@@ -79,9 +79,13 @@ echo "==> Fertig:"
 for bin in hbbs hbbr; do
   printf '    %-5s %s\n' "${bin}" "$(lipo -info "${OUT}/${bin}" | sed 's/.*: //')"
   # Keine Fremdbibliotheken: alles außer /usr/lib und /System/Library wäre eine
-  # Laufzeitabhängigkeit und damit ein Portabilitätsfehler.
-  if otool -L "${OUT}/${bin}" | tail -n +2 | grep -qvE '^\s+(/usr/lib/|/System/Library/)'; then
+  # Laufzeitabhängigkeit und damit ein Portabilitätsfehler. Bei Fat-Binaries
+  # schreibt otool je Architektur eine Kopfzeile — nur die eingerückten
+  # Bibliothekszeilen zählen, sonst schlägt die Prüfung immer an.
+  foreign="$(otool -L "${OUT}/${bin}" | grep -E '^[[:space:]]+/' \
+             | grep -vE '^[[:space:]]+(/usr/lib/|/System/Library/)' || true)"
+  if [[ -n "${foreign}" ]]; then
     echo "    WARNUNG: ${bin} verweist auf Bibliotheken außerhalb des Systems:" >&2
-    otool -L "${OUT}/${bin}" | tail -n +2 | grep -vE '^\s+(/usr/lib/|/System/Library/)' >&2
+    printf '%s\n' "${foreign}" >&2
   fi
 done
