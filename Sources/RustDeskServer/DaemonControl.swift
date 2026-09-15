@@ -84,12 +84,24 @@ enum DaemonControl {
         }
 
         let tmp = NSTemporaryDirectory()
+        // Bei einer Neuinstallation laufen die alten Dienste noch. Erst stoppen,
+        // dann die Programme per rm + cp ersetzen statt sie zu überschreiben:
+        // cp auf eine vorhandene Datei schreibt in dieselbe Inode, der Kernel
+        // behält deren alte Code-Signatur im Cache und tötet jeden weiteren Start
+        // mit OS_REASON_CODESIGNING. Eine frische Datei hat dieses Problem nicht.
         var script = """
         #!/bin/sh
         set -e
+
+        """
+        for role in Role.allCases {
+            script += "launchctl bootout system/\(role.label) 2>/dev/null || true\n"
+        }
+        script += """
         mkdir -p /usr/local/libexec '\(Config.workDir)' '\(Config.logDir)'
         chown \(Config.runAsUser) '\(Config.logDir)'
         chmod 755 '\(Config.logDir)'
+        rm -f '\(Config.supervisorBinary)'
         cp '\(exe)' '\(Config.supervisorBinary)'
         chmod 755 '\(Config.supervisorBinary)'
 
@@ -103,6 +115,7 @@ enum DaemonControl {
                 onError("Vorbereitung fehlgeschlagen: \(error.localizedDescription)"); return false
             }
             script += """
+            rm -f '\(role.binaryPath)'
             cp '\(bundled[role]!)' '\(role.binaryPath)'
             chmod 755 '\(role.binaryPath)'
             cp '\(tmpPlist)' '\(role.plistPath)'
@@ -126,7 +139,6 @@ enum DaemonControl {
         // hbbs zuerst laden: es erzeugt das Schlüsselpaar, auf das hbbr wartet.
         for role in [Role.hbbs, Role.hbbr] {
             script += """
-            launchctl bootout system '\(role.plistPath)' 2>/dev/null || true
             launchctl bootstrap system '\(role.plistPath)'
             launchctl enable system/\(role.label)
 

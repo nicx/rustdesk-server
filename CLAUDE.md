@@ -97,6 +97,12 @@ RDS_HEADLESS=1 RDS_ROLE=hbbs RDS_PORT=31116 RDS_WORKDIR=/tmp/rdtest \
   Quelltext-Reihenfolge als Anweisungen initialisiert (nicht lazy wie in anderen
   Dateien); der Headless-Zweig läuft ganz oben. Zustand, der den Start überlebt,
   gehört in eine `static` Property.
+- **Programme nie per `cp` überschreiben.** `cp` auf eine vorhandene Datei
+  schreibt in dieselbe Inode; der Kernel hält deren alte Code-Signatur im
+  Cache und tötet jeden weiteren Start mit `OS_REASON_CODESIGNING` (launchd:
+  „spawn scheduled", Log leer). Deshalb stoppt `install()` erst beide Daemons
+  und ersetzt die Programme per `rm -f` + `cp`. Nachgestellt: laufende
+  Binärdatei in-place überschreiben → nächster Start exit 137.
 - **Logs nie nach `/var/log`.** macOS-Updates löschen dort fremde Dateien.
   Weil die Daemons als `daemon` laufen, kann launchd die StandardOutPath-Datei
   in der root-eigenen `/var/log` nicht neu anlegen → Exit 78 (EX_CONFIG),
