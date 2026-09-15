@@ -48,14 +48,16 @@ done
 #
 # Nicht über "swift build --arch arm64 --arch x86_64": das verlangt xcbuild aus
 # dem vollen Xcode und scheitert mit den blossen Command Line Tools. Stattdessen
-# jede Architektur einzeln über -target bauen und danach mit lipo zusammenlegen —
-# das kommt mit den CLT aus.
+# jede Architektur einzeln über --triple bauen und danach mit lipo zusammenlegen —
+# das kommt mit den CLT aus. Früher per "-Xswiftc -target <arch>"; seit den CLT 27
+# (Swift 6.4) kompiliert SwiftPM dabei trotzdem für den Host und scheitert beim
+# x86_64-Link an "_main" — --triple setzt die Zielarchitektur fürs ganze Build.
 ARCHS=(arm64 x86_64)
 BUILT_SLICES=()
 for arch in "${ARCHS[@]}"; do
   echo "==> Baue Release-Binary für ${arch}…"
   swift build -c release --scratch-path ".build/${arch}" \
-    -Xswiftc -target -Xswiftc "${arch}-apple-macos13.0"
+    --triple "${arch}-apple-macosx13.0"
   BUILT_SLICES+=(".build/${arch}/release/${APP_NAME}")
 done
 
