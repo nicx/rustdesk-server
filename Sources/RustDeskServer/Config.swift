@@ -94,8 +94,12 @@ enum Config {
     }
 
     // LaunchDaemon-Plist für eine Rolle, zur Laufzeit erzeugt — so kommt die App
-    // ohne mitgelieferte Konfigurationsdateien aus. Die Mail-Konfiguration reist
-    // über dieselbe Env zum Supervisor; ohne Empfänger bleibt sie ganz weg.
+    // ohne mitgelieferte Konfigurationsdateien aus. HOME zeigt aufs
+    // Arbeitsverzeichnis: hbbs legt beim Start eine Client-Config unter
+    // $HOME/Library/Preferences ab, und das Home von `daemon` ist /var/root —
+    // dort nicht beschreibbar, jeder Start loggte „Failed to store config".
+    // Die Mail-Konfiguration reist über dieselbe Env zum Supervisor; ohne
+    // Empfänger bleibt sie ganz weg.
     static func daemonPlistXML(role: Role, basePort: UInt16, mail: MailConfig) -> String {
         var mailEnv = ""
         if mail.isConfigured {
@@ -122,7 +126,8 @@ enum Config {
                 <key>\(Env.workDir)</key><string>\(workDir)</string>
                 <key>\(Env.binary)</key><string>\(role.binaryPath)</string>
                 <key>RUST_LOG</key><string>info</string>
-                <key>TEST_HBBS</key><string>no</string>\(mailEnv)
+                <key>TEST_HBBS</key><string>no</string>
+                <key>HOME</key><string>\(workDir)</string>\(mailEnv)
             </dict>
             <key>WorkingDirectory</key><string>\(workDir)</string>
             <key>UserName</key><string>\(runAsUser)</string>

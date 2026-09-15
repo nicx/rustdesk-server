@@ -107,8 +107,14 @@ RDS_HEADLESS=1 RDS_ROLE=hbbs RDS_PORT=31116 RDS_WORKDIR=/tmp/rdtest \
   Weil die Daemons als `daemon` laufen, kann launchd die StandardOutPath-Datei
   in der root-eigenen `/var/log` nicht neu anlegen → Exit 78 (EX_CONFIG),
   Endlosschleife, alle Ports zu. Deshalb `/usr/local/var/log/rustdeskserver/`,
-  das dem Dienstbenutzer gehört. `offerLogPathMigration()` zieht Alt-
+  das dem Dienstbenutzer gehört. `offerDaemonUpdate()` zieht Alt-
   Installationen beim App-Start nach.
+- **`HOME` in der Plist setzen.** hbbs speichert beim Start eine Client-Config
+  unter `$HOME/Library/Preferences/com.carriez.RustDesk/`. Das Home von
+  `daemon` ist `/var/root` → „Failed to store config: Failed to create
+  directory" bei jedem Start. `HOME` zeigt deshalb aufs Arbeitsverzeichnis.
+  Neue Plist-Merkmale immer auch in `hasOutdatedPlist` aufnehmen, sonst
+  bekommen bestehende Installationen sie nie.
 - **Die App läuft produktiv aus `dist/`.** `build_app.sh` bricht ab, solange sie
   läuft — sonst löscht der Build das Bundle unter dem laufenden Prozess weg.
   Erst über das Menü beenden lassen.

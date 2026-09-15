@@ -33,16 +33,18 @@ enum DaemonControl {
         return p
     }
 
-    // Schreibt eine installierte Plist ihr Log noch an einen anderen Ort als
-    // vorgesehen (z. B. das alte /var/log)? Dann muss neu installiert werden,
-    // sonst legt das nächste macOS-Update den Daemon wieder lahm.
-    static var hasOutdatedLogPath: Bool {
+    // Stammt eine installierte Plist von einer älteren Version? Erkannt an
+    // Merkmalen, die spätere Versionen geändert haben: Log noch im alten
+    // /var/log (legt das nächste macOS-Update den Daemon lahm) oder kein HOME
+    // (hbbs kann seine Config nicht speichern). Dann neu installieren.
+    static var hasOutdatedPlist: Bool {
         Role.allCases.contains { role in
             guard let data = FileManager.default.contents(atPath: role.plistPath),
                   let obj = try? PropertyListSerialization.propertyList(from: data, format: nil),
-                  let dict = obj as? [String: Any],
-                  let path = dict["StandardOutPath"] as? String else { return false }
-            return path != role.logPath
+                  let dict = obj as? [String: Any] else { return false }
+            let env = dict["EnvironmentVariables"] as? [String: Any]
+            return dict["StandardOutPath"] as? String != role.logPath
+                || env?["HOME"] as? String != Config.workDir
         }
     }
 
