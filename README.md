@@ -114,11 +114,17 @@ geöffnet werden.
 | `/usr/local/libexec/rustdesk-hbbs`, `-hbbr` | die Serverprogramme |
 | `/Library/LaunchDaemons/app.rustdeskserver.*.plist` | die beiden Daemons |
 | `/usr/local/var/rustdeskserver/` | Schlüsselpaar, SQLite-Datei, Absturzmarker |
-| `/var/log/rustdeskserver-hbbs.log`, `-hbbr.log` | Logs der Dienste |
+| `/usr/local/var/log/rustdeskserver/hbbs.log`, `hbbr.log` | Logs der Dienste (bewusst nicht in `/var/log`, siehe unten) |
 
 „Server deaktivieren" entfernt Daemons und Programme, lässt das
 Arbeitsverzeichnis aber stehen: ein neues Schlüsselpaar würde jeden bereits
 eingerichteten Client aussperren.
+
+Die Logs liegen nicht in `/var/log`, weil macOS-Updates dort fremde Dateien
+löschen. launchd öffnet die Logdatei als Dienstbenutzer und darf sie in der
+root-eigenen `/var/log` nicht neu anlegen — der Dienst startete dann gar nicht
+mehr. Ältere Installationen erkennt die App beim Start und bietet an, sie zu
+aktualisieren.
 
 ## Lizenz
 

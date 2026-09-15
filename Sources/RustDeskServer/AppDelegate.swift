@@ -53,6 +53,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateUI()
         startStatusPolling()
         log("Steuer-App gestartet")
+        DispatchQueue.main.async { [weak self] in self?.offerLogPathMigration() }
+    }
+
+    // Ältere Versionen installierten die Daemons mit Logs in /var/log. Das
+    // übersteht kein macOS-Update (siehe Config.logDir) — einmal neu installieren
+    // verlegt die Logs und räumt die alten Dateien weg.
+    private func offerLogPathMigration() {
+        guard DaemonControl.isInstalled, DaemonControl.hasOutdatedLogPath else { return }
+        let alert = NSAlert()
+        alert.messageText = "Dienste aktualisieren"
+        alert.informativeText = """
+        Die installierten Dienste schreiben ihre Logs noch nach /var/log. \
+        macOS-Updates löschen diese Dateien, danach starten die Dienste nicht mehr.
+
+        Eine Neuinstallation verlegt die Logs nach \(Config.logDir). \
+        Schlüssel und Clients bleiben unverändert; die Dienste starten dabei kurz neu.
+        """
+        alert.addButton(withTitle: "Jetzt aktualisieren")
+        alert.addButton(withTitle: "Später")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            log("Log-Verlegung aufgeschoben")
+            return
+        }
+        suppressNextStopNotification = true
+        if DaemonControl.install(basePort: basePort, mail: mail, onError: { [weak self] in self?.showError($0) }) {
+            log("Daemons neu installiert, Logs jetzt unter \(Config.logDir)")
+        }
+        updateUI()
+        refreshSoon()
     }
 
     // Ohne Erlaubnis liefert UNUserNotificationCenter später still gar nichts aus.

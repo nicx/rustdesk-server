@@ -18,7 +18,9 @@ enum Role: String, CaseIterable {
     var label: String       { "\(Config.bundleID).\(rawValue)" }
     var plistPath: String   { "/Library/LaunchDaemons/\(label).plist" }
     var binaryPath: String  { "/usr/local/libexec/rustdesk-\(rawValue)" }
-    var logPath: String     { "/var/log/rustdeskserver-\(rawValue).log" }
+    var logPath: String     { "\(Config.logDir)/\(rawValue).log" }
+    // Früherer Ort, nur noch zum Erkennen und Aufräumen alter Installationen.
+    var legacyLogPath: String { "/var/log/rustdeskserver-\(rawValue).log" }
     var markerName: String  { "\(rawValue).state" }
 
     // hbbs bekommt den Basisport, hbbr den darauf folgenden. Beide binden noch
@@ -45,6 +47,14 @@ enum Config {
     // Arbeitsverzeichnis beider Serverprozesse. Hier legt hbbs sein Schlüsselpaar
     // und die SQLite-Datei ab; hier liegen auch die Absturzmarker.
     static let workDir = "/usr/local/var/rustdeskserver"
+
+    // Logs der Serverprozesse. Bewusst NICHT in /var/log: macOS-Updates räumen
+    // dort fremde Dateien weg, und weil launchd die Logdatei als Dienstbenutzer
+    // öffnet, darf es sie in der root-eigenen /var/log nicht neu anlegen — der
+    // Daemon scheitert dann bei jedem Start mit EX_CONFIG (78). Ein Verzeichnis,
+    // das dem Dienstbenutzer gehört, übersteht das: fehlt die Datei, legt launchd
+    // sie einfach neu an.
+    static let logDir = "/usr/local/var/log/rustdeskserver"
 
     static var publicKeyPath: String  { "\(workDir)/id_ed25519.pub" }
     static var privateKeyPath: String { "\(workDir)/id_ed25519" }

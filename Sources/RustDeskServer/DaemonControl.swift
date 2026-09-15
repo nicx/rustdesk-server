@@ -33,6 +33,19 @@ enum DaemonControl {
         return p
     }
 
+    // Schreibt eine installierte Plist ihr Log noch an einen anderen Ort als
+    // vorgesehen (z. B. das alte /var/log)? Dann muss neu installiert werden,
+    // sonst legt das nächste macOS-Update den Daemon wieder lahm.
+    static var hasOutdatedLogPath: Bool {
+        Role.allCases.contains { role in
+            guard let data = FileManager.default.contents(atPath: role.plistPath),
+                  let obj = try? PropertyListSerialization.propertyList(from: data, format: nil),
+                  let dict = obj as? [String: Any],
+                  let path = dict["StandardOutPath"] as? String else { return false }
+            return path != role.logPath
+        }
+    }
+
     // Läuft der überwachte Serverprozess? (best effort, ohne root)
     static func isRunning(_ role: Role) -> Bool {
         let proc = Process()
@@ -74,7 +87,9 @@ enum DaemonControl {
         var script = """
         #!/bin/sh
         set -e
-        mkdir -p /usr/local/libexec '\(Config.workDir)'
+        mkdir -p /usr/local/libexec '\(Config.workDir)' '\(Config.logDir)'
+        chown \(Config.runAsUser) '\(Config.logDir)'
+        chmod 755 '\(Config.logDir)'
         cp '\(exe)' '\(Config.supervisorBinary)'
         chmod 755 '\(Config.supervisorBinary)'
 
@@ -95,6 +110,7 @@ enum DaemonControl {
             chmod 644 '\(role.plistPath)'
             : > '\(role.logPath)'
             chown \(Config.runAsUser) '\(role.logPath)'
+            rm -f '\(role.legacyLogPath)'
 
             """
         }

@@ -50,7 +50,7 @@ Zur Laufzeit angelegt: `/usr/local/libexec/rustdeskserver-supervisor`,
 `/usr/local/libexec/rustdesk-{hbbs,hbbr}`,
 `/Library/LaunchDaemons/app.rustdeskserver.{hbbs,hbbr}.plist`,
 `/usr/local/var/rustdeskserver/` (Schlüsselpaar, SQLite, Marker),
-`/var/log/rustdeskserver-{hbbs,hbbr}.log`.
+`/usr/local/var/log/rustdeskserver/{hbbs,hbbr}.log`.
 
 ## Build & Test
 ```bash
@@ -97,6 +97,12 @@ RDS_HEADLESS=1 RDS_ROLE=hbbs RDS_PORT=31116 RDS_WORKDIR=/tmp/rdtest \
   Quelltext-Reihenfolge als Anweisungen initialisiert (nicht lazy wie in anderen
   Dateien); der Headless-Zweig läuft ganz oben. Zustand, der den Start überlebt,
   gehört in eine `static` Property.
+- **Logs nie nach `/var/log`.** macOS-Updates löschen dort fremde Dateien.
+  Weil die Daemons als `daemon` laufen, kann launchd die StandardOutPath-Datei
+  in der root-eigenen `/var/log` nicht neu anlegen → Exit 78 (EX_CONFIG),
+  Endlosschleife, alle Ports zu. Deshalb `/usr/local/var/log/rustdeskserver/`,
+  das dem Dienstbenutzer gehört. `offerLogPathMigration()` zieht Alt-
+  Installationen beim App-Start nach.
 - **Die App läuft produktiv aus `dist/`.** `build_app.sh` bricht ab, solange sie
   läuft — sonst löscht der Build das Bundle unter dem laufenden Prozess weg.
   Erst über das Menü beenden lassen.
