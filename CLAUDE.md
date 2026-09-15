@@ -103,6 +103,11 @@ RDS_HEADLESS=1 RDS_ROLE=hbbs RDS_PORT=31116 RDS_WORKDIR=/tmp/rdtest \
   „spawn scheduled", Log leer). Deshalb stoppt `install()` erst beide Daemons
   und ersetzt die Programme per `rm -f` + `cp`. Nachgestellt: laufende
   Binärdatei in-place überschreiben → nächster Start exit 137.
+- **`launchctl bootout` ist asynchron.** Es kehrt sofort zurück, launchd trägt
+  den Dienst aber erst aus, wenn der Supervisor sein Kind beendet hat (~1 s).
+  Ein `bootstrap` davor meldet „Bootstrap failed", `set -e` bricht ab, und
+  beide Dienste bleiben ungeladen. `install()` wartet deshalb per
+  `launchctl print`, bis launchd die Dienste nicht mehr kennt.
 - **Logs nie nach `/var/log`.** macOS-Updates löschen dort fremde Dateien.
   Weil die Daemons als `daemon` laufen, kann launchd die StandardOutPath-Datei
   in der root-eigenen `/var/log` nicht neu anlegen → Exit 78 (EX_CONFIG),

@@ -99,6 +99,16 @@ enum DaemonControl {
         for role in Role.allCases {
             script += "launchctl bootout system/\(role.label) 2>/dev/null || true\n"
         }
+        // bootout kehrt sofort zurück; launchd trägt den Dienst erst aus, wenn der
+        // Supervisor sein Kind beendet hat. Ein bootstrap davor scheitert („Bootstrap
+        // failed"), set -e bricht ab und beide Dienste bleiben ungeladen. Deshalb
+        // warten, bis launchd sie nicht mehr kennt (höchstens 15 s).
+        for role in Role.allCases {
+            script += """
+            i=0; while launchctl print system/\(role.label) >/dev/null 2>&1 && [ $i -lt 150 ]; do sleep 0.1; i=$((i+1)); done
+
+            """
+        }
         script += """
         mkdir -p /usr/local/libexec '\(Config.workDir)' '\(Config.logDir)'
         chown \(Config.runAsUser) '\(Config.logDir)'
